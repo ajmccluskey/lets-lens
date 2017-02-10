@@ -110,17 +110,17 @@ fmapT ::
   (a -> b)
   -> t a
   -> t b
-fmapT =
-  error "todo: fmapT"
+fmapT f =
+  getIdentity . traverse (Identity . f)
 
 -- | Let's refactor out the call to @traverse@ as an argument to @fmapT@.
-over :: 
+over ::
   ((a -> Identity b) -> s -> Identity t)
   -> (a -> b)
   -> s
   -> t
-over =
-  error "todo: over"
+over t f =
+  getIdentity . t (Identity . f)
 
 -- | Here is @fmapT@ again, passing @traverse@ to @over@.
 fmapTAgain ::
@@ -129,7 +129,7 @@ fmapTAgain ::
   -> t a
   -> t b
 fmapTAgain =
-  error "todo: fmapTAgain"
+  over traverse
 
 -- | Let's create a type-alias for this type of function.
 type Set s t a b =
@@ -141,9 +141,8 @@ type Set s t a b =
 -- unwrapping.
 sets ::
   ((a -> b) -> s -> t)
-  -> Set s t a b  
-sets =
-  error "todo: sets"
+  -> Set s t a b
+sets f = \f' -> Identity . f (getIdentity . f')
 
 mapped ::
   Functor f =>
