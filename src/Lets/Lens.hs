@@ -1,4 +1,6 @@
-{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE RankNTypes          #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TupleSections       #-}
 
 module Lets.Lens (
   fmapT
@@ -73,19 +75,26 @@ module Lets.Lens (
 , intOrLengthEven
 ) where
 
-import Control.Applicative(Applicative((<*>), pure))
-import Data.Char(toUpper)
-import Data.Foldable(Foldable(foldMap))
-import Data.Functor((<$>))
-import Data.Map(Map)
-import qualified Data.Map as Map(insert, delete, lookup)
-import Data.Monoid(Monoid)
-import qualified Data.Set as Set(Set, insert, delete, member)
-import Data.Traversable(Traversable(traverse))
-import Lets.Data(AlongsideLeft(AlongsideLeft, getAlongsideLeft), AlongsideRight(AlongsideRight, getAlongsideRight), Identity(Identity, getIdentity), Const(Const, getConst), Tagged(Tagged, getTagged), IntOr(IntOrIs, IntOrIsNot), IntAnd(IntAnd), Person(Person), Locality(Locality), Address(Address), bool)
-import Lets.Choice(Choice(left, right))
-import Lets.Profunctor(Profunctor(dimap))
-import Prelude hiding (product)
+import           Control.Applicative (Applicative (pure, (<*>)))
+import           Data.Char           (toUpper)
+import           Data.Foldable       (Foldable (foldMap))
+import           Data.Functor        ((<$>))
+import           Data.Map            (Map)
+import qualified Data.Map            as Map (delete, insert, lookup)
+import           Data.Monoid         (Monoid)
+import qualified Data.Set            as Set (Set, delete, insert, member)
+import           Data.Traversable    (Traversable (traverse))
+import           Lets.Choice         (Choice (left, right))
+import           Lets.Data           (Address (Address), AlongsideLeft (AlongsideLeft, getAlongsideLeft),
+                                      AlongsideRight (AlongsideRight, getAlongsideRight),
+                                      Const (Const, getConst),
+                                      Identity (Identity, getIdentity),
+                                      IntAnd (IntAnd),
+                                      IntOr (IntOrIs, IntOrIsNot),
+                                      Locality (Locality), Person (Person),
+                                      Tagged (Tagged, getTagged), bool)
+import           Lets.Profunctor     (Profunctor (dimap))
+import           Prelude             hiding (product)
 
 -- $setup
 -- >>> import qualified Data.Map as Map(fromList)
@@ -97,7 +106,7 @@ import Prelude hiding (product)
 --
 -- class (Foldable t, Functor t) => Traversable t where
 --   traverse ::
---     Applicative f => 
+--     Applicative f =>
 --     (a -> f b)
 --     -> t a
 --     -> f (t b)
@@ -110,17 +119,17 @@ fmapT ::
   (a -> b)
   -> t a
   -> t b
-fmapT =
-  error "todo: fmapT"
+fmapT f =
+  getIdentity . traverse (Identity . f)
 
 -- | Let's refactor out the call to @traverse@ as an argument to @fmapT@.
-over :: 
+over ::
   ((a -> Identity b) -> s -> Identity t)
   -> (a -> b)
   -> s
   -> t
-over =
-  error "todo: over"
+over tr f =
+  getIdentity . tr (Identity . f)
 
 -- | Here is @fmapT@ again, passing @traverse@ to @over@.
 fmapTAgain ::
@@ -129,7 +138,7 @@ fmapTAgain ::
   -> t a
   -> t b
 fmapTAgain =
-  error "todo: fmapTAgain"
+  over traverse
 
 -- | Let's create a type-alias for this type of function.
 type Set s t a b =
@@ -141,23 +150,23 @@ type Set s t a b =
 -- unwrapping.
 sets ::
   ((a -> b) -> s -> t)
-  -> Set s t a b  
-sets =
-  error "todo: sets"
+  -> Set s t a b
+sets f aib =
+  Identity . f (getIdentity . aib)
 
 mapped ::
   Functor f =>
   Set (f a) (f b) a b
 mapped =
-  error "todo: mapped"
+  sets fmap
 
 set ::
   Set s t a b
   -> s
   -> b
   -> t
-set =
-  error "todo: set"
+set f s b =
+  over f (const b) s
 
 ----
 
@@ -169,8 +178,8 @@ foldMapT ::
   (a -> b)
   -> t a
   -> b
-foldMapT =
-  error "todo: foldMapT"
+foldMapT f =
+  getConst . traverse (Const . f)
 
 -- | Let's refactor out the call to @traverse@ as an argument to @foldMapT@.
 foldMapOf ::
@@ -178,8 +187,8 @@ foldMapOf ::
   -> (a -> r)
   -> s
   -> r
-foldMapOf =
-  error "todo: foldMapOf"
+foldMapOf tr f =
+  getConst . tr (Const . f)
 
 -- | Here is @foldMapT@ again, passing @traverse@ to @foldMapOf@.
 foldMapTAgain ::
@@ -188,7 +197,7 @@ foldMapTAgain ::
   -> t a
   -> b
 foldMapTAgain =
-  error "todo: foldMapTAgain"
+  foldMapOf traverse
 
 -- | Let's create a type-alias for this type of function.
 type Fold s t a b =
@@ -205,14 +214,14 @@ folds ::
   -> (a -> Const b a)
   -> s
   -> Const t s
-folds =
-  error "todo: folds"
+folds f acb =
+  Const . f (getConst . acb)
 
 folded ::
   Foldable f =>
   Fold (f a) (f a) a a
 folded =
-  error "todo: folded"
+ folds foldMap
 
 ----
 
@@ -227,7 +236,8 @@ get ::
   -> s
   -> a
 get =
-  error "todo: get"
+  -- getConst . gasa Const
+  (`foldMapOf` id)
 
 ----
 
@@ -242,20 +252,25 @@ type Traversal s t a b =
 -- | Traverse both sides of a pair.
 both ::
   Traversal (a, a) (b, b) a b
-both =
-  error "todo: both"
+both f (a1, a2) =
+  (,) <$> f a1 <*> f a2
 
 -- | Traverse the left side of @Either@.
 traverseLeft ::
   Traversal (Either a x) (Either b x) a b
-traverseLeft =
-  error "todo: traverseLeft"
+traverseLeft afb eax =
+  case eax of
+    Left a  -> Left <$> afb a
+    Right x -> pure (Right x)
 
 -- | Traverse the right side of @Either@.
 traverseRight ::
   Traversal (Either x a) (Either x b) a b
-traverseRight =
-  error "todo: traverseRight"
+traverseRight afb exa =
+  case exa of
+    Left x  -> pure (Left x)
+    Right a -> Right <$> afb a
+-- traverseRight = traverse
 
 type Traversal' a b =
   Traversal a a b b
@@ -286,19 +301,42 @@ type Prism s t a b =
 _Left ::
   Prism (Either a x) (Either b x) a b
 _Left =
-  error "todo: _Left"
+    -- dimap id (traverseLeft id) . left
+  let
+    f (Right x) = Left (Right x)
+    f (Left a) = Right a
+  in
+    prism Left f
 
 _Right ::
-  Prism (Either x a) (Either x b) a b 
+  Prism (Either x a) (Either x b) a b
 _Right =
-  error "todo: _Right"
+  dimap id (traverseRight id) . right
 
 prism ::
+  forall s t a b.
   (b -> t)
   -> (s -> Either t a)
   -> Prism s t a b
-prism =
-  error "todo: prism"
+prism bt f =
+  undefined
+  -- let
+  --   g :: s -> a
+  --   g s = case f s of
+  --     Left t -> _
+  --     Right a -> a
+  -- in
+  --   dimap g (fmap bt)
+  -- ? :: p a (f b) -> p s (f t)
+  -- f :: s -> Either t a
+  -- dimap :: (b -> a) ->  (c -> d) -> p a c -> p b d
+  -- dimap :: () ->
+  -- pafb :: p a (f b)
+  -- let
+  --   dimap' :: Profunctor p => (s -> a) -> (f b -> f t) -> p a (f b) -> p s (f t)
+  --   dimap' = dimap
+  -- in
+  --   dimap' _ (fmap bt) pafb
 
 _Just ::
   Prism (Maybe a) (Maybe b) a b
@@ -395,7 +433,7 @@ fmodify ::
   Lens s t a b
   -> (a -> f b)
   -> s
-  -> f t 
+  -> f t
 fmodify _ _ _ =
   error "todo: fmodify"
 
@@ -423,8 +461,8 @@ infixl 5 |=
 -- (30,"abc")
 fstL ::
   Lens (a, x) (b, x) a b
-fstL =
-  error "todo: fstL"
+fstL afb (a,x) =
+  (,x) <$> afb a
 
 -- |
 --
@@ -432,8 +470,8 @@ fstL =
 -- (13,"abcdef")
 sndL ::
   Lens (x, a) (x, b) a b
-sndL =
-  error "todo: sndL"
+sndL afb (x,a) =
+  (x,) <$> afb a
 
 -- |
 --
@@ -460,11 +498,19 @@ sndL =
 -- >>> set (mapL 33) (Map.fromList (map (\c -> (ord c - 96, c)) ['a'..'d'])) Nothing
 -- fromList [(1,'a'),(2,'b'),(3,'c'),(4,'d')]
 mapL ::
-  Ord k =>
+  forall k v f.
+  (Ord k, Functor f) =>
   k
-  -> Lens (Map k v) (Map k v) (Maybe v) (Maybe v)
-mapL =
-  error "todo: mapL"
+  -> (Maybe v -> f (Maybe v)) -> Map k v -> f (Map k v)
+  -- Lens (Map k v) (Map k v) (Maybe v) (Maybe v)
+mapL k afb m =
+  let
+    g :: Maybe v -> f (Map k v)
+    g mv = case mv of
+      Just v -> _
+      Nothing -> _
+  in
+    fmap g . afb $ Map.lookup k m
 
 -- |
 --
@@ -491,11 +537,14 @@ mapL =
 -- >>> set (setL 33) (Set.fromList [1..5]) False
 -- fromList [1,2,3,4,5]
 setL ::
-  Ord k =>
+  (Ord k) =>
   k
   -> Lens (Set.Set k) (Set.Set k) Bool Bool
-setL =
-  error "todo: setL"
+setL k afb s =
+  let
+    f = bool (Set.delete k s) (Set.insert k s)
+  in
+    fmap f . afb $ Set.member k s
 
 -- |
 --
@@ -699,7 +748,7 @@ setCityAndLocality ::
   (Person, Address) -> (String, Locality) -> (Person, Address)
 setCityAndLocality =
   error "todo: setCityAndLocality"
-  
+
 -- |
 --
 -- >>> getSuburbOrCity (Left maryAddress)
