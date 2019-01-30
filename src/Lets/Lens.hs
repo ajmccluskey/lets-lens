@@ -236,7 +236,6 @@ get ::
   -> s
   -> a
 get =
-  -- getConst . gasa Const
   (`foldMapOf` id)
 
 ----
@@ -266,11 +265,7 @@ traverseLeft afb eax =
 -- | Traverse the right side of @Either@.
 traverseRight ::
   Traversal (Either x a) (Either x b) a b
-traverseRight afb exa =
-  case exa of
-    Left x  -> pure (Left x)
-    Right a -> Right <$> afb a
--- traverseRight = traverse
+traverseRight = traverse
 
 type Traversal' a b =
   Traversal a a b b
@@ -301,52 +296,30 @@ type Prism s t a b =
 _Left ::
   Prism (Either a x) (Either b x) a b
 _Left =
-    -- dimap id (traverseLeft id) . left
-  let
-    f (Right x) = Left (Right x)
-    f (Left a) = Right a
-  in
-    prism Left f
+  dimap id (traverseLeft id) . left
 
 _Right ::
   Prism (Either x a) (Either x b) a b
 _Right =
-  dimap id (traverseRight id) . right
+  -- There's symmetry with _Left given sequenceA = traverse id = traverseRight id
+  dimap id sequenceA . right
 
 prism ::
-  forall s t a b.
   (b -> t)
   -> (s -> Either t a)
   -> Prism s t a b
-prism bt f =
-  undefined
-  -- let
-  --   g :: s -> a
-  --   g s = case f s of
-  --     Left t -> _
-  --     Right a -> a
-  -- in
-  --   dimap g (fmap bt)
-  -- ? :: p a (f b) -> p s (f t)
-  -- f :: s -> Either t a
-  -- dimap :: (b -> a) ->  (c -> d) -> p a c -> p b d
-  -- dimap :: () ->
-  -- pafb :: p a (f b)
-  -- let
-  --   dimap' :: Profunctor p => (s -> a) -> (f b -> f t) -> p a (f b) -> p s (f t)
-  --   dimap' = dimap
-  -- in
-  --   dimap' _ (fmap bt) pafb
+prism bT sEta =
+  dimap sEta (either pure (fmap bT)) . right
 
 _Just ::
   Prism (Maybe a) (Maybe b) a b
 _Just =
-  error "todo: _Just"
+  prism Just (maybe (Left Nothing) Right)
 
 _Nothing ::
   Prism (Maybe a) (Maybe a) () ()
 _Nothing =
-  error "todo: _Nothing"
+  prism (const Nothing) (maybe (Right ()) (Left . Just))
 
 setP ::
   Prism s t a b
