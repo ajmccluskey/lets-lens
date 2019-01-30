@@ -325,15 +325,15 @@ setP ::
   Prism s t a b
   -> s
   -> Either t a
-setP _ _ =
-  error "todo: setP"
+setP f s =
+  either Right Left . ($ s) $ f Left
 
 getP ::
   Prism s t a b
   -> b
   -> t
-getP _ _ =
-  error "todo: getP"
+getP f b =
+  ($ b) . getTagged $ f (Tagged id)
 
 type Prism' a b =
   Prism a a b b
@@ -356,8 +356,7 @@ modify ::
   -> (a -> b)
   -> s
   -> t
-modify _ _ _ =
-  error "todo: modify"
+modify = over
 
 -- | An alias for @modify@.
 (%~) ::
@@ -386,8 +385,8 @@ infixr 4 %~
   -> b
   -> s
   -> t
-(.~) _ _ _ =
-  error "todo: (.~)"
+(.~) l b s =
+  set l s b
 
 infixl 5 .~
 
@@ -407,8 +406,7 @@ fmodify ::
   -> (a -> f b)
   -> s
   -> f t
-fmodify _ _ _ =
-  error "todo: fmodify"
+fmodify l = l
 
 -- |
 --
@@ -423,8 +421,8 @@ fmodify _ _ _ =
   -> f b
   -> s
   -> f t
-(|=) _ _ _ =
-  error "todo: (|=)"
+(|=) l f =
+  l (const f)
 
 infixl 5 |=
 
