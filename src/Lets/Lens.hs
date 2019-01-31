@@ -520,8 +520,8 @@ compose ::
   Lens s t a b
   -> Lens q r s t
   -> Lens q r a b
-compose _ _ =
-  error "todo: compose"
+compose =
+  flip (.)
 
 -- | An alias for @compose@.
 (|.) ::
@@ -543,7 +543,7 @@ infixr 9 |.
 identity ::
   Lens a b a b
 identity =
-  error "todo: identity"
+  id
 
 -- |
 --
@@ -556,8 +556,12 @@ product ::
   Lens s t a b
   -> Lens q r c d
   -> Lens (s, q) (t, r) (a, c) (b, d)
-product _ _ =
-  error "todo: product"
+product l l' f (s,q) =
+  let
+    fBD = f (foldMapOf l id s, foldMapOf l' id q)
+    g (b,d) = (set l s b, set l' q d)
+  in
+    fmap g fBD
 
 -- | An alias for @product@.
 (***) ::
@@ -586,8 +590,8 @@ choice ::
   Lens s t a b
   -> Lens q r a b
   -> Lens (Either s q) (Either t r) a b
-choice _ _ =
-  error "todo: choice"
+choice l1 l2 f =
+  either (fmap Left . l1 f) (fmap Right . l2 f)
 
 -- | An alias for @choice@.
 (|||) ::
@@ -671,7 +675,7 @@ getSuburb ::
   Person
   -> String
 getSuburb =
-  error "todo: getSuburb"
+  get (addressL . suburbL)
 
 -- |
 --
@@ -685,7 +689,7 @@ setStreet ::
   -> String
   -> Person
 setStreet =
-  error "todo: setStreet"
+  set (addressL . streetL)
 
 -- |
 --
@@ -698,7 +702,7 @@ getAgeAndCountry ::
   (Person, Locality)
   -> (Int, String)
 getAgeAndCountry =
-  error "todo: getAgeAndCountry"
+  get (product ageL countryL)
 
 -- |
 --
