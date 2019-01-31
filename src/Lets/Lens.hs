@@ -474,7 +474,10 @@ mapL ::
   k
   -> Lens (Map k v) (Map k v) (Maybe v) (Maybe v)
 mapL k f m =
-  fmap (maybe m (\v -> Map.insert k v m)) . f . Map.lookup k $ m
+  let
+    deleteOrInsert = maybe (Map.delete k m) (\v -> Map.insert k v m)
+  in
+    fmap deleteOrInsert . f . Map.lookup k $ m
 
 -- |
 --
