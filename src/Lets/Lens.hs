@@ -469,19 +469,11 @@ sndL afb (x,a) =
 -- >>> set (mapL 33) (Map.fromList (map (\c -> (ord c - 96, c)) ['a'..'d'])) Nothing
 -- fromList [(1,'a'),(2,'b'),(3,'c'),(4,'d')]
 mapL ::
-  forall k v f.
-  (Ord k, Functor f) =>
+  Ord k =>
   k
-  -> (Maybe v -> f (Maybe v)) -> Map k v -> f (Map k v)
-  -- Lens (Map k v) (Map k v) (Maybe v) (Maybe v)
-mapL k afb m =
-  let
-    g :: Maybe v -> f (Map k v)
-    g mv = case mv of
-      Just v -> _
-      Nothing -> _
-  in
-    fmap g . afb $ Map.lookup k m
+  -> Lens (Map k v) (Map k v) (Maybe v) (Maybe v)
+mapL k f m =
+  fmap (maybe m (\v -> Map.insert k v m)) . f . Map.lookup k $ m
 
 -- |
 --
