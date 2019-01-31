@@ -1,3 +1,4 @@
+{-# LANGUAGE LambdaCase          #-}
 {-# LANGUAGE RankNTypes          #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TupleSections       #-}
@@ -702,7 +703,7 @@ getAgeAndCountry ::
   (Person, Locality)
   -> (Int, String)
 getAgeAndCountry =
-  get (product ageL countryL)
+  get (ageL *** countryL)
 
 -- |
 --
@@ -714,7 +715,7 @@ getAgeAndCountry =
 setCityAndLocality ::
   (Person, Address) -> (String, Locality) -> (Person, Address)
 setCityAndLocality =
-  error "todo: setCityAndLocality"
+  set (addressL.localityL.cityL *** localityL)
 
 -- |
 --
@@ -727,7 +728,7 @@ getSuburbOrCity ::
   Either Address Locality
   -> String
 getSuburbOrCity =
-  error "todo: getSuburbOrCity"
+  get (suburbL ||| cityL)
 
 -- |
 --
@@ -741,7 +742,7 @@ setStreetOrState ::
   -> String
   -> Either Person Locality
 setStreetOrState =
-  error "todo: setStreetOrState"
+  set (addressL.streetL ||| stateL)
 
 -- |
 --
@@ -754,7 +755,7 @@ modifyCityUppercase ::
   Person
   -> Person
 modifyCityUppercase =
-  error "todo: modifyCityUppercase"
+  modify (addressL.localityL.cityL) (fmap toUpper)
 
 -- |
 --
@@ -767,7 +768,7 @@ modifyIntAndLengthEven ::
   IntAnd [a]
   -> IntAnd Bool
 modifyIntAndLengthEven =
-  error "todo: modifyIntAndLengthEven"
+  intAndL %~ even.length
 
 ----
 
@@ -777,8 +778,8 @@ modifyIntAndLengthEven =
 -- Locality "ABC" "DEF" "GHI"
 traverseLocality ::
   Traversal' Locality String
-traverseLocality =
-  error "todo: traverseLocality"
+traverseLocality f (Locality s1 s2 s3) =
+  Locality <$> f s1 <*> f s2 <*> f s3
 
 -- |
 --
@@ -790,12 +791,20 @@ traverseLocality =
 intOrIntP ::
   Prism' (IntOr a) Int
 intOrIntP =
-  error "todo: intOrIntP"
+  prism IntOrIs
+        (\case
+            IntOrIs n -> Right n
+            isNot@(IntOrIsNot _) -> Left isNot
+        )
 
 intOrP ::
   Prism (IntOr a) (IntOr b) a b
 intOrP =
-  error "todo: intOrP"
+  prism IntOrIsNot
+        (\case
+            IntOrIsNot a -> Right a
+            IntOrIs n -> Left (IntOrIs n)
+        )
 
 -- |
 --
@@ -811,4 +820,4 @@ intOrLengthEven ::
   IntOr [a]
   -> IntOr Bool
 intOrLengthEven =
-  error "todo: intOrLengthEven"
+  over intOrP (even.length)
