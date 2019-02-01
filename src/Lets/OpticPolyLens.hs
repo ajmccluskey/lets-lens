@@ -1,4 +1,5 @@
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE TupleSections #-}
 
 module Lets.OpticPolyLens (
   Lens(..)
@@ -124,8 +125,8 @@ modify ::
   -> (a -> b)
   -> s
   -> t
-modify =
-  error "todo: modify"
+modify (Lens r) f s =
+  getIdentity $ r (Identity . f) s
 
 -- | An alias for @modify@.
 (%~) ::
@@ -154,8 +155,8 @@ infixr 4 %~
   -> b
   -> s
   -> t
-(.~) =
-  error "todo: (.~)"
+(.~) l b s =
+  set l s b
 
 infixl 5 .~
 
@@ -174,9 +175,9 @@ fmodify ::
   Lens s t a b
   -> (a -> f b)
   -> s
-  -> f t 
-fmodify =
-  error "todo: fmodify"
+  -> f t
+fmodify (Lens r) =
+  r
 
 -- |
 --
@@ -191,8 +192,8 @@ fmodify =
   -> f b
   -> s
   -> f t
-(|=) =
-  error "todo: (|=)"
+(|=) l fb =
+  fmodify l (const fb)
 
 infixl 5 |=
 
@@ -209,7 +210,7 @@ infixl 5 |=
 fstL ::
   Lens (a, x) (b, x) a b
 fstL =
-  error "todo: fstL"
+  Lens $ \f (a, x) -> (,x) <$> f a
 
 -- |
 --
@@ -224,7 +225,7 @@ fstL =
 sndL ::
   Lens (x, a) (x, b) a b
 sndL =
-  error "todo: sndL"
+  Lens $ \f (x, a) -> (x,) <$> f a
 
 -- |
 --
@@ -246,11 +247,17 @@ sndL =
 -- >>> set (mapL 33) (Map.fromList (map (\c -> (ord c - 96, c)) ['a'..'d'])) Nothing
 -- fromList [(1,'a'),(2,'b'),(3,'c'),(4,'d')]
 mapL ::
+  forall k v.
   Ord k =>
   k
   -> Lens (Map k v) (Map k v) (Maybe v) (Maybe v)
-mapL =
-  error "todo: mapL"
+mapL k =
+  Lens $ \f m ->
+    let
+      ins v = Map.insert k v m
+      del = Map.delete k m
+    in
+      fmap (maybe del ins) . f $ Map.lookup k m
 
 -- |
 --
@@ -275,8 +282,12 @@ setL ::
   Ord k =>
   k
   -> Lens (Set k) (Set k) Bool Bool
-setL =
-  error "todo: setL"
+setL k =
+  let
+    delOrIns s b = if b then Set.insert k s else Set.delete k s
+  in
+    Lens $ \f s ->
+      fmap (delOrIns s) . f $ Set.member k s
 
 -- |
 --
@@ -289,8 +300,8 @@ compose ::
   Lens s t a b
   -> Lens q r s t
   -> Lens q r a b
-compose =
-  error "todo: compose"
+compose (Lens f) (Lens g) =
+  Lens $ g . f
 
 -- | An alias for @compose@.
 (|.) ::
@@ -312,7 +323,7 @@ infixr 9 |.
 identity ::
   Lens a b a b
 identity =
-  error "todo: identity"
+  Lens id
 
 -- |
 --
@@ -325,8 +336,9 @@ product ::
   Lens s t a b
   -> Lens q r c d
   -> Lens (s, q) (t, r) (a, c) (b, d)
-product =
-  error "todo: product"
+product l1 l2 =
+  Lens $ \f (s, q) ->
+      fmap ((sndL %~ set l2 q) . (fstL %~ set l1 s)) $ f (get l1 s, get l2 q)
 
 -- | An alias for @product@.
 (***) ::
