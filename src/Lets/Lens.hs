@@ -563,9 +563,8 @@ product ::
 product l l' f (s,q) =
   let
     fBD = f (foldMapOf l id s, foldMapOf l' id q)
-    g (b,d) = (set l s b, set l' q d)
   in
-    fmap g fBD
+    fmap (\(b,d) -> (set l s b, set l' q d)) fBD
 
 -- | An alias for @product@.
 (***) ::
